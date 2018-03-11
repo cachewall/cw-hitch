@@ -1,0 +1,32 @@
+diff -Naur ../hitch-1.4.4.orig/hitch.service ./hitch.service
+--- ../hitch-1.4.4.orig/hitch.service	1970-01-01 01:00:00.000000000 +0100
++++ ./hitch.service	2016-12-23 12:56:09.567151298 +0100
+@@ -0,0 +1,28 @@
++[Unit]
++Description=Network proxy that terminates TLS/SSL connections
++After=syslog.target network.target
++
++[Service]
++
++#
++# If you want to make changes to this file, please copy it to 
++# /etc/systemd/system/hitch.service and make your changes there.
++# This will override the file kept at /lib/systemd/system/hitch.service
++#
++# Configuration may be done in /etc/hitch/hitch.params
++#
++
++PIDFile=/run/hitch/hitch.pid
++
++# Maximum size of the corefile. 
++LimitCORE=infinity
++
++RuntimeDirectory=hitch
++Type=simple
++PrivateTmp=true
++ExecStart=/usr/sbin/hitch --pidfile=/run/hitch/hitch.pid --config=/etc/hitch/hitch.conf
++ExecReload=/usr/bin/kill -HUP $MAINPID
++
++[Install]
++WantedBy=multi-user.target
++

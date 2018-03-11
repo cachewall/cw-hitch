@@ -1,0 +1,262 @@
+diff -Naur ../hitch-1.2.0.orig/hitch.initrc.redhat ./hitch.initrc.redhat
+--- ../hitch-1.2.0.orig/hitch.initrc.redhat	1970-01-01 01:00:00.000000000 +0100
++++ ./hitch.initrc.redhat	2016-04-26 12:16:15.174291004 +0200
+@@ -0,0 +1,128 @@
++#! /bin/sh
++#
++# hitch Control the Hitch daemon
++#
++# chkconfig: - 90 10
++# description: Hitch proxy daemon
++# processname: hitch
++# config: /etc/hitch/hitch.conf
++# pidfile: /var/run/hitch/hitch.pid
++
++### BEGIN INIT INFO
++# Provides: hitch
++# Required-Start: $network $local_fs $remote_fs
++# Required-Stop: $network $local_fs $remote_fs
++# Default-Start:
++# Default-Stop:
++# Short-Description: start and stop hitch
++# Description: Hitch proxy daemon
++### END INIT INFO
++
++# Source function library.
++. /etc/init.d/functions
++
++retval=0
++pidfile="/var/run/hitch/hitch.pid"
++lockfile="/var/lock/subsys/hitch"
++config="/etc/hitch/hitch.conf"
++exec="/usr/sbin/hitch"
++prog="hitch"
++
++
++start() {
++
++	if [ ! -x $exec ]
++	then
++		echo $exec not found
++		exit 5
++	fi
++
++	if [ ! -f $config ]
++	then
++		echo $config not found
++		exit 6
++	fi
++
++	echo -n "Starting hitch ssl proxy: "
++
++	daemon $exec "--pidfile=$pidfile --config $config" > /dev/null
++	retval=$?
++	if [ $retval -eq 0 ]
++	then
++		touch $lockfile
++		echo_success
++		echo
++	else
++		echo_failure
++		echo
++	fi
++	return $retval
++}
++
++stop() {
++	echo -n "Stopping Hitch proxy daemon: "
++	killproc -p $pidfile $prog
++	retval=$?
++	echo
++	[ $retval -eq 0 ] && rm -f $lockfile
++	return $retval
++}
++
++restart() {
++	$exec --test --config $config || exit 1
++	stop
++	start
++}
++
++reload() {
++	$exec --test --config $config || exit 1
++	killproc -p $pidfile $prog -HUP
++}
++
++force_reload() {
++	restart
++}
++
++rh_status() {
++	status -p $pidfile $prog
++}
++
++rh_status_q() {
++	rh_status >/dev/null 2>&1
++}
++
++# See how we were called.
++case "$1" in
++	start)
++		rh_status_q && exit 0
++		$1
++		;;
++	stop)
++		rh_status_q || exit 0
++		$1
++		;;
++	restart)
++		$1
++		;;
++	reload)
++		rh_status_q || exit 7
++		$1
++		;;
++	force-reload)
++		force_reload
++		;;
++	status)
++		rh_status
++		;;
++	condrestart|try-restart)
++		rh_status_q || exit 0
++		restart
++		;;
++	*)
++	echo "Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
++
++	exit 2
++esac
++
++exit $?
++
+diff -Naur ../hitch-1.2.0.orig/hitch.initrc.redhat.old ./hitch.initrc.redhat.old
+--- ../hitch-1.2.0.orig/hitch.initrc.redhat.old	1970-01-01 01:00:00.000000000 +0100
++++ ./hitch.initrc.redhat.old	2016-04-26 11:10:57.835847857 +0200
+@@ -0,0 +1,126 @@
++#! /bin/sh
++#
++# hitch Control the Hitch daemon
++#
++# chkconfig: - 90 10
++# description: Hitch proxy daemon
++# processname: hitch
++# config: /etc/hitch/hitch.conf
++# pidfile: /var/run/hitch/hitch.pid
++
++### BEGIN INIT INFO
++# Provides: hitch
++# Required-Start: $network $local_fs $remote_fs
++# Required-Stop: $network $local_fs $remote_fs
++# Default-Start:
++# Default-Stop:
++# Short-Description: start and stop hitch
++# Description: Hitch proxy daemon
++### END INIT INFO
++
++# Source function library.
++. /etc/init.d/functions
++
++retval=0
++pidfile="/var/run/hitch/hitch.pid"
++lockfile="/var/lock/subsys/hitch"
++config="/etc/hitch/hitch.conf"
++exec="/usr/sbin/hitch"
++prog="hitch"
++
++
++start() {
++
++	if [ ! -x $exec ]
++	then
++		echo $exec not found
++		exit 5
++	fi
++
++	if [ ! -f $config ]
++	then
++		echo $config not found
++		exit 6
++	fi
++
++	echo -n "Starting hitch ssl proxy: "
++
++	daemon $exec "--pidfile=$pidfile --config $config" > /dev/null
++	retval=$?
++	if [ $retval -eq 0 ]
++	then
++		touch $lockfile
++		echo_success
++		echo
++	else
++		echo_failure
++		echo
++	fi
++	return $retval
++}
++
++stop() {
++	echo -n "Stopping Hitch proxy daemon: "
++	killproc -p $pidfile $prog
++	retval=$?
++	echo
++	[ $retval -eq 0 ] && rm -f $lockfile
++	return $retval
++}
++
++restart() {
++	stop
++	start
++}
++
++reload() {
++	restart
++}
++
++force_reload() {
++	restart
++}
++
++rh_status() {
++	status -p $pidfile $prog
++}
++
++rh_status_q() {
++	rh_status >/dev/null 2>&1
++}
++
++# See how we were called.
++case "$1" in
++	start)
++		rh_status_q && exit 0
++		$1
++		;;
++	stop)
++		rh_status_q || exit 0
++		$1
++		;;
++	restart)
++		$1
++		;;
++	reload)
++		rh_status_q || exit 7
++		$1
++		;;
++	force-reload)
++		force_reload
++		;;
++	status)
++		rh_status
++		;;
++	condrestart|try-restart)
++		rh_status_q || exit 0
++		restart
++		;;
++	*)
++	echo "Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
++
++	exit 2
++esac
++
++exit $?
++
