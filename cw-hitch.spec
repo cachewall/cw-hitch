@@ -175,7 +175,7 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{hitch_homedir} %{hitch_user} 
 %endif
 
 %changelog
-* Sun Mar 10 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1.cachewall
+* Sun Mar 11 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1.cachewall
 - Updated to upstream release 1.4.7
 - Patch for upstream bug #141
 
