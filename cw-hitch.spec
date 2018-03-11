@@ -9,6 +9,7 @@
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
+%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Summary:		Network proxy that terminates TLS/SSL connections
 Name:			%{name}
@@ -70,7 +71,7 @@ export RST2MAN=/bin/true
 %endif
 
 %configure \
-	--docdir=%{_docdir}/%{name}-%{version}}
+	--docdir=%{__pkgdocdir}
 
 %__make %{?_smp_mflags}
 
@@ -88,7 +89,7 @@ sed '
 	sed -i 's/daemon = off/daemon = on/g;' hitch.conf
 %endif
 
-%__rm -f %{buildroot}%{_datarootdir}/doc/%{name}/hitch.conf.example
+%__rm -f %{buildroot}%{_pkgdocdir}/hitch.conf.example
 
 %if 0%{?fedora} 
 	sed -i 's/^ciphers =.*/ciphers = "PROFILE=SYSTEM"/g' hitch.conf
@@ -149,8 +150,8 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %files
 %doc README.md
 %doc CHANGES.rst
-%doc hitch.conf.example
-%doc docs/*
+%%doc hitch.conf.example
+doc docs/*
 
 %{_sbindir}/%{name}
 %{_mandir}/man5/%{name}.conf.5*
