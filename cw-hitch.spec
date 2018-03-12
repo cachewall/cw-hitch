@@ -16,7 +16,7 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/hitch-%{version}}
 
 Summary:		Network proxy that terminates TLS/SSL connections
-Name:			%{cw-hitch}
+Name:			%{name}
 Version:		%{version}
 Release:		%{release}
 Group:			System Environment/Daemons
