@@ -71,7 +71,7 @@ export RST2MAN=/bin/true
 %endif
 
 %configure \
-	--docdir=%{__pkgdocdir}
+	--docdir=%{_pkgdocdir}
 
 %__make %{?_smp_mflags}
 
