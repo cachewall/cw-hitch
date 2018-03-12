@@ -1,4 +1,4 @@
-name = hitch
+name = cw-hitch
 
 srpm:
 	sed -i "s/%global name[ \t].*/%global name\t\t$(name)/g" $(spec)
