@@ -157,7 +157,7 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %{_mandir}/man5/%{name}.conf.5*
 %{_mandir}/man8/%{name}.8*
 %dir %{_sysconfdir}/%{name}
-%attr(0700,%hitch_user,%hitch_user) %dir %{_sharedstatedir}/hitch
+%attr(0700,%_hitch_user,%_hitch_group) %dir %{_sharedstatedir}/hitch
 %config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
 
 %if 0%{?rhel} == 6
@@ -171,11 +171,14 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %ghost %verify(not md5 size mtime)  /run/%{name}/%{name}.pid
 %else
 %{_initrddir}/%{name}
-%attr(0755,%hitch_user,%hitch_user) %dir %{_localstatedir}/run/%{name}
-%attr(0644,%hitch_user,%hitch_user) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/%{name}/%{name}.pid
+%attr(0755,%_hitch_user,%_hitch_group) %dir %{_localstatedir}/run/%{name}
+%attr(0644,%_hitch_user,%_hitch_group) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/%{name}/%{name}.pid
 %endif
 
 %changelog
+* Mon Mar 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-2.cachewall
+- Fixed %attr hitch user and group
+
 * Sun Mar 11 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1.cachewall
 - Updated to upstream release 1.4.7
 - Patch for upstream bug #141
