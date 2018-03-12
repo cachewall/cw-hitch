@@ -1,10 +1,8 @@
 name = hitch
 
 srpm:
-	shell sed -i "s/%global name[ \t].*/%global name\t\t$(name)/g" $(spec)
-	shell grep "%global" $(spec)
-
-	shell mv $(spec) $(name).spec
+	sed -i "s/%global name[ \t].*/%global name\t\t$(name)/g" $(spec)
+	mv $(spec) $(name).spec
 
 	rpmbuild \
 		-bs \

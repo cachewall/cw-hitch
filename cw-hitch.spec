@@ -9,6 +9,7 @@
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
+%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Summary:		Network proxy that terminates TLS/SSL connections
 Name:			%{name}
@@ -70,7 +71,7 @@ export RST2MAN=/bin/true
 %endif
 
 %configure \
-	--docdir=%{_docdir}/%{name}-%{version}}
+	--docdir=%{_pkgdocdir}
 
 %__make %{?_smp_mflags}
 
@@ -88,15 +89,15 @@ sed '
 	sed -i 's/daemon = off/daemon = on/g;' hitch.conf
 %endif
 
-%__rm -f %{buildroot}%{_datarootdir}/doc/%{name}/hitch.conf.example
+%__rm -f %{buildroot}%{_pkgdocdir}/hitch.conf.example
 
 %if 0%{?fedora} 
 	sed -i 's/^ciphers =.*/ciphers = "PROFILE=SYSTEM"/g' hitch.conf
 %endif
 
 %__install -p -D -m 0644 hitch.conf %{buildroot}%{_sysconfdir}/hitch/hitch.conf
-%__install -d -m 0755 %{buildroot}%{hitch_homedir}
-%__install -d -m 0755 %{buildroot}%{hitch_datadir}
+%__install -d -m 0755 %{buildroot}%{_sharedstatedir}/hitch
+%__install -d -m 0755 %{buildroot}%{_sharedstatedir}/hitch
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 	%__install -p -D -m 0644 hitch.service %{buildroot}%{_unitdir}/hitch.service
@@ -108,7 +109,7 @@ sed '
 
 %pre
 groupadd -r %{hitch_group} &>/dev/null ||:
-useradd -r -g %{hitch_group} -s /sbin/nologin -d %{hitch_homedir} %{hitch_user} &>/dev/null ||:
+useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitch_user} &>/dev/null ||:
 
 %if 0%{?rhel} == 6
 	# Save init.d/hitch if Cachewall.
@@ -156,7 +157,7 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{hitch_homedir} %{hitch_user} 
 %{_mandir}/man5/%{name}.conf.5*
 %{_mandir}/man8/%{name}.8*
 %dir %{_sysconfdir}/%{name}
-%attr(0700,%hitch_user,%hitch_user) %dir %hitch_homedir
+%attr(0700,%hitch_user,%hitch_user) %dir %{_sharedstatedir}/hitch
 %config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
 
 %if 0%{?rhel} == 6
@@ -175,7 +176,7 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{hitch_homedir} %{hitch_user} 
 %endif
 
 %changelog
-* Sun Mar 10 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1.cachewall
+* Sun Mar 11 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1.cachewall
 - Updated to upstream release 1.4.7
 - Patch for upstream bug #141
 
