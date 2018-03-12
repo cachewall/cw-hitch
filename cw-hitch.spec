@@ -150,8 +150,8 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %files
 %doc README.md
 %doc CHANGES.rst
-%%doc hitch.conf.example
-doc docs/*
+%doc hitch.conf.example
+%doc docs/*
 
 %{_sbindir}/%{name}
 %{_mandir}/man5/%{name}.conf.5*
