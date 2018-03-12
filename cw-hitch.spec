@@ -23,6 +23,9 @@ Group:			System Environment/Daemons
 License:		BSD
 URL:			https://hitch-tls.org/
 Provides:		%{name}
+%if "%{name}" != "cw-hitch"
+Provides:		cw-hitch
+%endif
 BuildRoot:		%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Source0:		https://hitch-tls.org/source/%{name}-%{version}.tar.gz
 BuildRequires:		libev-devel
