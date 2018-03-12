@@ -13,21 +13,19 @@
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
-%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
+%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/hitch-%{version}}
 
 Summary:		Network proxy that terminates TLS/SSL connections
-Name:			%{name}
+Name:			%{cw-hitch}
 Version:		%{version}
 Release:		%{release}
 Group:			System Environment/Daemons
 License:		BSD
 URL:			https://hitch-tls.org/
-Provides:		%{name}
-%if "%{name}" != "cw-hitch"
-Provides:		cw-hitch
-%endif
+Provides:		hitch
+Obsoletes:		hitch <= 1.4.6
 BuildRoot:		%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Source0:		https://hitch-tls.org/source/%{name}-%{version}.tar.gz
+Source0:		https://hitch-tls.org/source/hitch-%{version}.tar.gz
 BuildRequires:		libev-devel
 BuildRequires:		cw-openssl
 BuildRequires:		cw-openssl-devel
@@ -52,7 +50,7 @@ Requires(preun):	initscripts
 hitch is a network proxy that terminates TLS/SSL connections and forwards the unencrypted traffic to some backend. It is designed to handle 10s of thousands of connections efficiently on multicore machines.
 
 %prep
-%setup -q -n %{name}-%{version}
+%setup -q -n hitch-%{version}
 %patch0
 %patch1
 %patch2
@@ -160,12 +158,12 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %doc hitch.conf.example
 %doc docs/*
 
-%{_sbindir}/%{name}
-%{_mandir}/man5/%{name}.conf.5*
-%{_mandir}/man8/%{name}.8*
-%dir %{_sysconfdir}/%{name}
+%{_sbindir}/hitch
+%{_mandir}/man5/hitch.conf.5*
+%{_mandir}/man8/hitch.8*
+%dir %{_sysconfdir}/hitch
 %attr(0700,%_hitch_user,%_hitch_group) %dir %{_sharedstatedir}/hitch
-%config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
+%config(noreplace) %{_sysconfdir}/hitch/hitch.conf
 
 %if 0%{?rhel} == 6
 %doc LICENSE
@@ -174,12 +172,12 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %endif
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
-%{_unitdir}/%{name}.service
-%ghost %verify(not md5 size mtime)  /run/%{name}/%{name}.pid
+%{_unitdir}/hitch.service
+%ghost %verify(not md5 size mtime)  /run/hitch/hitch.pid
 %else
-%{_initrddir}/%{name}
-%attr(0755,%_hitch_user,%_hitch_group) %dir %{_localstatedir}/run/%{name}
-%attr(0644,%_hitch_user,%_hitch_group) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/%{name}/%{name}.pid
+%{_initrddir}/hitch
+%attr(0755,%_hitch_user,%_hitch_group) %dir %{_localstatedir}/run/hitch
+%attr(0644,%_hitch_user,%_hitch_group) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/hitch/hitch.pid
 %endif
 
 %changelog
