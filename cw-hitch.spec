@@ -91,7 +91,7 @@ sed '
 
 %__rm -f %{buildroot}%{_pkgdocdir}/hitch.conf.example
 
-%if 0%{?fedora} 
+%if 0%{?fedora}
 	sed -i 's/^ciphers =.*/ciphers = "PROFILE=SYSTEM"/g' hitch.conf
 %endif
 
@@ -231,7 +231,7 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 * Mon Apr 25 2016 Ingvar Hagelund <ingvar@redpill-linpro.com> 1.2.0-1
 - New upstream release
 - Clean up test tree before build
-- Removed no longer needed test patch 
+- Removed no longer needed test patch
 - Rebased missing_curl_resolve_on_el6 test patch
 - Added reload option to systemd service file and sysv initrc script
 - Changed the default cipher to "PROFILE=SYSTEM" on fedora
