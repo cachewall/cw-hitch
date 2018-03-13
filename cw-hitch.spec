@@ -9,7 +9,7 @@
 %define debug_package	%{nil}
 %global name		cw-hitch
 %global version		1.4.7
-%global release		2%{?dist}.cachewall
+%global release		3%{?dist}.cachewall
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
