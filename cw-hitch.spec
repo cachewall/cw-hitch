@@ -12,7 +12,7 @@
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
-%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/hitch-%{version}}
+%global _docdir		%{_docdir}/hitch-%{version}
 
 Summary:		Network proxy that terminates TLS/SSL connections
 Name:			%{name}
@@ -48,11 +48,11 @@ Requires(preun):	initscripts
 %description
 hitch is a network proxy that terminates TLS/SSL connections and forwards the unencrypted traffic to some backend. It is designed to handle 10s of thousands of connections efficiently on multicore machines.
 
-%prep
-%setup -q -n hitch-%{version}
-%patch0
-%patch1
-%patch2
+%package devel
+Summary:	Files for development of applications which will use Hitch
+Group:		Development/Libraries
+Requires:	krb5-devel%{?_isa}, zlib-devel%{?_isa}
+Requires:	pkgconfig
 
 sed -i ' s/^group =.*/group = "nobody"/ ' hitch.conf.example
 
@@ -75,7 +75,7 @@ export RST2MAN=/bin/true
 %endif
 
 %configure \
-	--docdir=%{_pkgdocdir}
+	--docdir=%{_docdir}
 
 %__make %{?_smp_mflags}
 
@@ -92,8 +92,6 @@ sed '
 %if 0%{?rhel} == 6
 	sed -i 's/daemon = off/daemon = on/g;' hitch.conf
 %endif
-
-%__rm -f %{buildroot}%{_pkgdocdir}/hitch.conf.example
 
 %if 0%{?fedora}
 	sed -i 's/^ciphers =.*/ciphers = "PROFILE=SYSTEM"/g' hitch.conf
@@ -152,10 +150,9 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %endif
 
 %files
-%doc README.md
-%doc CHANGES.rst
-%doc hitch.conf.example
-%doc docs/*
+%doc %{_docdir}/README.md
+%doc %{_docdir}/CHANGES.rst
+%doc %{_docdir}/hitch.conf.example
 
 %{_sbindir}/hitch
 %{_mandir}/man5/hitch.conf.5*
@@ -299,3 +296,4 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 
 * Wed Jun 10 2015 Ingvar Hagelund <ingvar@redpill-linpro.com> 1.0.0-0.3.beta3
 - Initial wrap for fedora
+
