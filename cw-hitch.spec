@@ -6,7 +6,6 @@
 	%define dist	.el7
 %endif
 
-%define debug_package	%{nil}
 %global name		cw-hitch
 %global version		1.4.7
 %global release		3%{?dist}.cachewall
