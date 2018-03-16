@@ -54,6 +54,15 @@ Group:		Development/Libraries
 Requires:	krb5-devel%{?_isa}, zlib-devel%{?_isa}
 Requires:	pkgconfig
 
+%description devel
+hitch is a network proxy that terminates TLS/SSL connections and forwards the unencrypted traffic to some backend. It is designed to handle 10s of thousands of connections efficiently on multicore machines.
+
+%prep
+%setup -q -n hitch-%{version}
+%patch0
+%patch1
+%patch2
+
 sed -i ' s/^group =.*/group = "nobody"/ ' hitch.conf.example
 
 %build
@@ -175,6 +184,11 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %attr(0755,%_hitch_user,%_hitch_group) %dir %{_localstatedir}/run/hitch
 %attr(0644,%_hitch_user,%_hitch_group) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/hitch/hitch.pid
 %endif
+
+%files devel
+%doc %{_docdir}/README.md
+%doc %{_docdir}/CHANGES.rst
+%doc %{_docdir}/hitch.conf.example
 
 %changelog
 * Mon Mar 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-2.cachewall
