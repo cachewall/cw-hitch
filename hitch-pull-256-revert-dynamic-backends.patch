@@ -1,0 +1,679 @@
+diff -ur ../hitch-1.4.7.original/hitch.conf.man.rst ./hitch.conf.man.rst
+--- ../hitch-1.4.7.original/hitch.conf.man.rst	2018-04-09 02:05:46.507731720 +0400
++++ ./hitch.conf.man.rst	2018-04-09 02:17:56.636731054 +0400
+@@ -129,12 +129,6 @@
+ 
+ Number of seconds a TCP socket is kept alive
+ 
+-backend-refresh = <number>
+---------------------------
+-
+-Number of seconds between periodic backend IP lookups, 0 to disable.
+-Default is 0.
+-
+ ocsp-dir = <string>
+ -------------------
+ 
+diff -ur ../hitch-1.4.7.original/hitch.man.rst ./hitch.man.rst
+--- ../hitch-1.4.7.original/hitch.man.rst	2018-04-09 02:05:46.514731720 +0400
++++ ./hitch.man.rst	2018-04-09 02:17:56.643731054 +0400
+@@ -50,7 +50,6 @@
+   -n  --workers=NUM          Number of worker processes (Default: 1)
+   -B  --backlog=NUM          Set listen backlog size (Default: 100)
+   -k  --keepalive=SECS       TCP keepalive on client socket (Default: 3600)
+-  -R  --backendrefresh=SECS  Periodic backend IP lookup, 0 to disable (Default: 0)
+   -r  --chroot=DIR           Sets chroot directory (Default: "")
+   -u  --user=USER            Set uid/gid after binding the socket (Default: "")
+   -g  --group=GROUP          Set gid after binding the socket (Default: "")
+diff -ur ../hitch-1.4.7.original/src/cfg_lex.l ./src/cfg_lex.l
+--- ../hitch-1.4.7.original/src/cfg_lex.l	2018-04-09 02:05:46.508731720 +0400
++++ ./src/cfg_lex.l	2018-04-09 02:17:56.637731054 +0400
+@@ -87,7 +87,6 @@
+ "shared-cache-peer"  	{ return (TOK_SHARED_CACHE_PEER); }
+ "shared-cache-if"    	{ return (TOK_SHARED_CACHE_IF); }
+ "private-key"		{ return (TOK_PRIVATE_KEY); }
+-"backend-refresh"	{ return (TOK_BACKEND_REFRESH); }
+ 
+ (?i:"yes"|"y"|"on"|"true"|"t"|\"yes\"|\"y\"|\"on\"|\"true\"|\"t\") {
+ 	yylval.i = 1;
+diff -ur ../hitch-1.4.7.original/src/cfg_parser.y ./src/cfg_parser.y
+--- ../hitch-1.4.7.original/src/cfg_parser.y	2018-04-09 02:05:46.509731720 +0400
++++ ./src/cfg_parser.y	2018-04-09 02:17:56.637731054 +0400
+@@ -55,8 +55,7 @@
+ %token TOK_OCSP_DIR TOK_OCSP_RESP_TMO TOK_OCSP_CONN_TMO TOK_ALPN_PROTOS
+ %token TOK_TLS_PROTOS TOK_SSLv3 TOK_TLSv1_0 TOK_TLSv1_1 TOK_TLSv1_2
+ %token TOK_SESSION_CACHE TOK_SHARED_CACHE_LISTEN TOK_SHARED_CACHE_PEER
+-%token TOK_SHARED_CACHE_IF TOK_PRIVATE_KEY TOK_BACKEND_REFRESH
+-%token TOK_OCSP_REFRESH_INTERVAL
++%token TOK_SHARED_CACHE_IF TOK_PRIVATE_KEY TOK_OCSP_REFRESH_INTERVAL
+ 
+ %parse-param { hitch_config *cfg }
+ 
+@@ -109,7 +108,6 @@
+ 	| LOG_FILENAME_REC
+ 	| SEND_BUFSIZE_REC
+ 	| RECV_BUFSIZE_REC
+-	| BACKEND_REFRESH_REC
+ 	;
+ 
+ FRONTEND_REC
+@@ -535,11 +533,6 @@
+ #endif
+ };
+ 
+-BACKEND_REFRESH_REC: TOK_BACKEND_REFRESH '=' UINT
+-{
+-	cfg->BACKEND_REFRESH_TIME = $3;
+-};
+-
+ %%
+ 
+ void
+diff -ur ../hitch-1.4.7.original/src/configuration.c ./src/configuration.c
+--- ../hitch-1.4.7.original/src/configuration.c	2018-04-09 02:05:46.509731720 +0400
++++ ./src/configuration.c	2018-04-09 02:17:56.637731054 +0400
+@@ -45,7 +45,6 @@
+ #define CFG_WORKERS "workers"
+ #define CFG_BACKLOG "backlog"
+ #define CFG_KEEPALIVE "keepalive"
+-#define CFG_BACKEND_REFRESH "backendrefresh"
+ #define CFG_CHROOT "chroot"
+ #define CFG_USER "user"
+ #define CFG_GROUP "group"
+@@ -224,7 +223,6 @@
+ 	r->SYSLOG             = 0;
+ 	r->SYSLOG_FACILITY    = LOG_DAEMON;
+ 	r->TCP_KEEPALIVE_TIME = 3600;
+-	r->BACKEND_REFRESH_TIME = 0;
+ 	r->DAEMONIZE          = 0;
+ 	r->PREFER_SERVER_CIPHERS = 0;
+ 	r->TEST	              = 0;
+@@ -816,8 +814,6 @@
+ 		r = config_param_val_int(v, &cfg->BACKLOG, 0);
+ 	} else if (strcmp(k, CFG_KEEPALIVE) == 0) {
+ 		r = config_param_val_int(v, &cfg->TCP_KEEPALIVE_TIME, 1);
+-	} else if (strcmp(k, CFG_BACKEND_REFRESH) == 0) {
+-		r = config_param_val_int(v, &cfg->BACKEND_REFRESH_TIME, 1);
+ 	}
+ #ifdef USE_SHARED_CACHE
+ 	else if (strcmp(k, CFG_SHARED_CACHE) == 0) {
+@@ -1124,7 +1120,6 @@
+ 	fprintf(out, "  -n  --workers=NUM          Number of worker processes (Default: %ld)\n", cfg->NCORES);
+ 	fprintf(out, "  -B  --backlog=NUM          Set listen backlog size (Default: %d)\n", cfg->BACKLOG);
+ 	fprintf(out, "  -k  --keepalive=SECS       TCP keepalive on client socket (Default: %d)\n", cfg->TCP_KEEPALIVE_TIME);
+-	fprintf(out, "  -R  --backend-refresh=SECS Periodic backend IP lookup, 0 to disable (Default: %d)\n", cfg->BACKEND_REFRESH_TIME);
+ 
+ 
+ #ifdef USE_SHARED_CACHE
+@@ -1266,7 +1261,6 @@
+ #endif
+ 		{ CFG_PIDFILE, 1, NULL, 'p' },
+ 		{ CFG_KEEPALIVE, 1, NULL, 'k' },
+-		{ CFG_BACKEND_REFRESH, 1, NULL, 'R' },
+ 		{ CFG_CHROOT, 1, NULL, 'r' },
+ 		{ CFG_USER, 1, NULL, 'u' },
+ 		{ CFG_GROUP, 1, NULL, 'g' },
+@@ -1290,7 +1284,7 @@
+ 		{ "help", 0, NULL, 'h' },
+ 		{ 0, 0, 0, 0 }
+ 	};
+-#define SHORT_OPTS "c:e:Ob:f:n:B:l:C:U:p:P:M:k:r:u:g:qstVho:R:"
++#define SHORT_OPTS "c:e:Ob:f:n:B:l:C:U:p:P:M:k:r:u:g:qstVho:"
+ 
+ 	if (argc == 1) {
+ 		config_print_usage(argv[0]);
+@@ -1367,7 +1361,6 @@
+ #endif
+ CFG_ARG('p', CFG_PIDFILE);
+ CFG_ARG('k', CFG_KEEPALIVE);
+-CFG_ARG('R', CFG_BACKEND_REFRESH);
+ CFG_ARG('r', CFG_CHROOT);
+ CFG_ARG('u', CFG_USER);
+ CFG_ARG('g', CFG_GROUP);
+diff -ur ../hitch-1.4.7.original/src/configuration.h ./src/configuration.h
+--- ../hitch-1.4.7.original/src/configuration.h	2018-04-09 02:05:46.508731720 +0400
++++ ./src/configuration.h	2018-04-09 02:17:56.637731054 +0400
+@@ -129,7 +129,6 @@
+     int SYSLOG;
+     int SYSLOG_FACILITY;
+     int TCP_KEEPALIVE_TIME;
+-    int BACKEND_REFRESH_TIME;
+     int DAEMONIZE;
+     int PREFER_SERVER_CIPHERS;
+     int BACKEND_CONNECT_TIMEOUT;
+Only in ../hitch-1.4.7.original/src/foreign: vsa.c
+Only in ../hitch-1.4.7.original/src/foreign: vsa.h
+diff -ur ../hitch-1.4.7.original/src/hitch.c ./src/hitch.c
+--- ../hitch-1.4.7.original/src/hitch.c	2018-04-09 02:05:46.511731720 +0400
++++ ./src/hitch.c	2018-04-09 03:31:33.298727029 +0400
+@@ -79,7 +79,6 @@
+ #include "shctx.h"
+ #include "foreign/vpf.h"
+ #include "foreign/uthash.h"
+-#include "foreign/vsa.h"
+ 
+ #ifndef MSG_NOSIGNAL
+ # define MSG_NOSIGNAL 0
+@@ -118,7 +117,7 @@
+ /* Worker proc's read side of mgt->worker pipe(2) */
+ static ev_io mgt_rd;
+ 
+-static struct suckaddr *backaddr;
++static struct addrinfo *backaddr;
+ static pid_t master_pid;
+ static pid_t ocsp_proc_pid;
+ static int core_id;
+@@ -252,20 +251,6 @@
+ 	union ha_proxy_v2_addr	addr;
+ };
+ 
+-enum worker_update_type {
+-	WORKER_GEN,
+-	BACKEND_REFRESH
+-};
+-
+-union worker_update_payload {
+-	unsigned		gen;
+-	struct sockaddr_storage	addr;
+-};
+-
+-struct worker_update {
+-	enum worker_update_type		type;
+-	union worker_update_payload 	payload;
+-};
+ 
+ /* set a file descriptor (socket) to non-blocking mode */
+ static int
+@@ -1452,12 +1437,7 @@
+ static int
+ create_back_socket()
+ {
+-	socklen_t len;
+-	const void *addr = VSA_Get_Sockaddr(backaddr, &len);
+-        AN(addr);
+-
+-	int s = socket(((const struct sockaddr *)addr)->sa_family,
+-		       SOCK_STREAM, IPPROTO_TCP);
++	int s = socket(backaddr->ai_family, SOCK_STREAM, IPPROTO_TCP);
+ 
+ 	if (s == -1)
+ 		return -1;
+@@ -1561,10 +1541,7 @@
+ {
+ 	int t = 1;
+ 	CHECK_OBJ_NOTNULL(ps, PROXYSTATE_MAGIC);
+-	socklen_t len;
+-	const void *addr = VSA_Get_Sockaddr(backaddr, &len);
+-
+-	t = connect(ps->fd_down, addr, len);
++	t = connect(ps->fd_down, backaddr->ai_addr, backaddr->ai_addrlen);
+ 	if (t == 0 || errno == EINPROGRESS || errno == EINTR) {
+ 		ev_io_start(loop, &ps->ev_w_connect);
+ 		ev_timer_start(loop, &ps->ev_t_connect);
+@@ -1663,11 +1640,7 @@
+ 	(void)revents;
+ 	CAST_OBJ_NOTNULL(ps, w->data, PROXYSTATE_MAGIC);
+ 
+-	socklen_t len;
+-	const void *addr = VSA_Get_Sockaddr(backaddr, &len);
+-
+-	t = connect(ps->fd_down, addr, len);
+-
++	t = connect(ps->fd_down, backaddr->ai_addr, backaddr->ai_addrlen);
+ 	if (!t || errno == EISCONN || !errno) {
+ 		ev_io_stop(loop, &ps->ev_w_connect);
+ 		ev_timer_stop(loop, &ps->ev_t_connect);
+@@ -1975,21 +1948,6 @@
+ 		} else if (CONFIG->WRITE_IP_OCTET) {
+ 			write_ip_octet(ps);
+ 		}
+-
+-		int back = create_back_socket();
+-		if (back == -1) {
+-			ERR("{backend-socket}: %s\n", strerror(errno));
+-			return;
+-		}
+-		ps->fd_down = back;
+-		ev_io_init(&ps->ev_w_connect, handle_connect, back, EV_WRITE);
+-		ev_timer_init(&ps->ev_t_connect, connect_timeout,
+-			CONFIG->BACKEND_CONNECT_TIMEOUT, 0.);
+-
+-		ev_io_init(&ps->ev_w_clear, clear_write, back, EV_WRITE);
+-		ev_io_init(&ps->ev_r_clear, clear_read, back, EV_READ);
+-
+-
+ 		/* start connect now */
+ 		if (0 != start_connect(ps))
+ 			return;
+@@ -2332,6 +2290,13 @@
+ 
+ 	settcpkeepalive(client);
+ 
++	int back = create_back_socket();
++	if (back == -1) {
++		(void) close(client);
++		ERR("{backend-socket}: %s\n", strerror(errno));
++		return;
++	}
++
+ 	CAST_OBJ_NOTNULL(fr, w->data, FRONTEND_MAGIC);
+ 	if (fr->ssl_ctxs != NULL)
+ 		CAST_OBJ_NOTNULL(so, fr->ssl_ctxs, SSLCTX_MAGIC);
+@@ -2340,6 +2305,7 @@
+ 
+ 	SSL *ssl = SSL_new(so->ctx);
+ 	if (ssl == NULL) {
++		(void)close(back);
+ 		(void)close(client);
+ 		ERR("{SSL_new}: %s\n", strerror(errno));
+ 		return;
+@@ -2348,6 +2314,7 @@
+ 	ALLOC_OBJ(ps, PROXYSTATE_MAGIC);
+ 	if (ps == NULL) {
+ 		SSL_free(ssl);
++		(void)close(back);
+ 		(void)close(client);
+ 		ERR("{malloc-err}: %s\n", strerror(errno));
+ 		return;
+@@ -2362,7 +2329,7 @@
+ 	SSL_set_fd(ssl, client);
+ 
+ 	ps->fd_up = client;
+-	ps->fd_down = 0;
++	ps->fd_down = back;
+ 	ps->ssl = ssl;
+ 	ps->want_shutdown = 0;
+ 	ps->clear_connected = 0;
+@@ -2387,6 +2354,13 @@
+ 
+ 	ev_io_init(&ps->ev_proxy, client_proxy_proxy, client, EV_READ);
+ 
++	ev_io_init(&ps->ev_w_connect, handle_connect, back, EV_WRITE);
++	ev_timer_init(&ps->ev_t_connect, connect_timeout,
++	    CONFIG->BACKEND_CONNECT_TIMEOUT, 0.);
++
++	ev_io_init(&ps->ev_w_clear, clear_write, back, EV_WRITE);
++	ev_io_init(&ps->ev_r_clear, clear_read, back, EV_READ);
++
+ 	ps->ev_r_ssl.data = ps;
+ 	ps->ev_w_ssl.data = ps;
+ 	ps->ev_r_clear.data = ps;
+@@ -2435,36 +2409,16 @@
+ 	}
+ }
+ 
+-static const void *
+-Get_Sockaddr(const struct sockaddr_storage *ss, socklen_t *sl)
+-{
+-	AN(ss);
+-	AN(sl);
+-	const struct sockaddr * sa = (const struct sockaddr *)(ss);
+-	switch (sa->sa_family) {
+-	case PF_INET:
+-		*sl = sizeof(struct sockaddr_in);
+-		break;
+-	case PF_INET6:
+-		*sl = sizeof(struct sockaddr_in6);
+-		break;
+-	default:
+-		*sl = 0;
+-		return (NULL);
+-	}
+-	return sa;
+-}
+-
+ static void
+ handle_mgt_rd(struct ev_loop *loop, ev_io *w, int revents)
+ {
++	unsigned cg;
+ 	ssize_t r;
+ 	struct frontend *fr;
+ 	struct listen_sock *ls;
+-	struct worker_update wu;
+ 
+ 	(void) revents;
+-	r = read(w->fd, &wu, sizeof(wu));
++	r = read(w->fd, &cg, sizeof(cg));
+ 	if (r  == -1) {
+ 		if (errno == EWOULDBLOCK || errno == EAGAIN)
+ 			return;
+@@ -2480,7 +2434,7 @@
+ 		_exit(1);
+ 	}
+ 
+-	if (wu.type == WORKER_GEN && wu.payload.gen != worker_gen) {
++	if (cg != worker_gen) {
+ 		/* This means this process has reached its retirement age. */
+ 		worker_state = WORKER_EXITING;
+ 
+@@ -2495,18 +2449,10 @@
+ 		}
+ 
+ 		check_exit_state();
+-
+-		LOGL("Worker %d (gen: %d): State %s\n", core_id, worker_gen,
+-		(worker_state == WORKER_EXITING) ? "EXITING" : "ACTIVE");
+ 	}
+-	else if (wu.type == BACKEND_REFRESH) {
+-		free(backaddr);
+ 
+-		socklen_t len;
+-		const void *addr = Get_Sockaddr(&(wu.payload.addr), &len);
+-		backaddr = VSA_Malloc(addr, len);
+-                AN(VSA_Sane(backaddr));
+-	}
++	LOGL("Worker %d (gen: %d): State %s\n", core_id, worker_gen,
++	    (worker_state == WORKER_EXITING) ? "EXITING" : "ACTIVE");
+ }
+ 
+ static void
+@@ -2797,53 +2743,26 @@
+ #endif
+ }
+ 
+-static int
+-get_backend_addrinfo(void) {
+-	struct addrinfo *result;
++void
++init_globals(void)
++{
++	/* backaddr */
+ 	struct addrinfo hints;
+-	struct suckaddr *tmp;
++
++	VTAILQ_INIT(&frontends);
++	VTAILQ_INIT(&worker_procs);
+ 
+ 	memset(&hints, 0, sizeof hints);
+ 	hints.ai_family = AF_UNSPEC;
+ 	hints.ai_socktype = SOCK_STREAM;
+ 	hints.ai_flags = 0;
+ 	const int gai_err = getaddrinfo(CONFIG->BACK_IP, CONFIG->BACK_PORT,
+-	    &hints, &result);
++	    &hints, &backaddr);
+ 	if (gai_err != 0) {
+ 		ERR("{getaddrinfo-backend}: %s\n", gai_strerror(gai_err));
+ 		exit(1);
+ 	}
+ 
+-	tmp = VSA_Malloc(result->ai_addr, result->ai_addrlen);
+-	freeaddrinfo(result);
+-
+-	if (backaddr == NULL) {
+-		backaddr = tmp;
+-		return 1;
+-	}
+-
+-	if (VSA_Compare(backaddr, tmp) != 0) {
+-		free(backaddr);
+-		backaddr = tmp;
+-		return 1;
+-	}
+-
+-	free(tmp);
+-	return 0;
+-}
+-
+-void
+-init_globals(void)
+-{
+-	struct addrinfo hints;
+-
+-	VTAILQ_INIT(&frontends);
+-	VTAILQ_INIT(&worker_procs);
+-
+-	get_backend_addrinfo();
+-
+-	(void)hints;
+-
+ #ifdef USE_SHARED_CACHE
+ 	if (CONFIG->SHARED_CACHE) {
+ 		/* cache update peers addresses */
+@@ -3512,47 +3431,15 @@
+ }
+ 
+ static void
+-notify_workers(struct worker_update *wu)
+-{
+-	struct worker_proc *c;
+-	int i;
+-	VTAILQ_FOREACH(c, &worker_procs, list) {
+-		if ((wu->type == WORKER_GEN && wu->payload.gen != c->gen) ||
+-		     (wu->type == BACKEND_REFRESH)) {
+-			errno = 0;
+-			do {
+-				i = write(c->pfd, (void*)wu, sizeof(*wu));
+-				if (i == -1 && errno != EINTR) {
+-					if (wu->type == WORKER_GEN)
+-						ERR("WARNING: {core} Unable to "
+-						"gracefully reload worker %d"
+-						" (%s).\n",
+-						c->pid, strerror(errno));
+-					else
+-						ERR("WARNING: {core} Unable to "
+-						"notify worker %d "
+-						"with changed backend address (%s).\n",
+-						c->pid, strerror(errno));
+-
+-					(void)kill(c->pid, SIGTERM);
+-					break;
+-				}
+-			} while (i == -1 && errno == EINTR);
+-			(void)close(c->pfd);
+-		}
+-	}
+-}
+-
+-static void
+ reconfigure(int argc, char **argv)
+ {
++	struct worker_proc *c;
+ 	hitch_config *cfg_new;
+-	int rv;
++	int i, rv;
+ 	struct cfg_tpc_obj_head cfg_objs;
+ 	struct cfg_tpc_obj *cto, *cto_tmp;
+ 	struct timeval tv;
+ 	double t0, t1;
+-	struct worker_update wu;
+ 
+ 	LOGL("Received SIGHUP: Initiating configuration reload.\n");
+ 	AZ(gettimeofday(&tv, NULL));
+@@ -3596,10 +3483,24 @@
+ 
+ 	worker_gen++;
+ 	start_workers(0, CONFIG->NCORES);
+-
+-	wu.type = WORKER_GEN;
+-	wu.payload.gen = worker_gen;
+-	notify_workers(&wu);
++	VTAILQ_FOREACH(c, &worker_procs, list) {
++		if (c->gen != worker_gen) {
++			errno = 0;
++			do {
++				i = write(c->pfd, &worker_gen,
++				    sizeof(worker_gen));
++				if (i == -1 && errno != EINTR) {
++					ERR("WARNING: {core} Unable to "
++					    "gracefully reload worker %d"
++					    " (%s).\n",
++					    c->pid, strerror(errno));
++					(void)kill(c->pid, SIGTERM);
++					break;
++				}
++			} while (i == -1 && errno == EINTR);
++			(void)close(c->pfd);
++		}
++	}
+ 
+ 	if (CONFIG->OCSP_DIR != NULL) {
+ 		(void) kill(ocsp_proc_pid, SIGTERM);
+@@ -3613,31 +3514,6 @@
+ 	CONFIG = cfg_new;
+ }
+ 
+-void
+-sleep_and_refresh(hitch_config *CONFIG)
+-{
+-	/* static backend address */
+-	if (!CONFIG->BACKEND_REFRESH_TIME) {
+-		pause();
+-		return;
+-	}
+-
+-	int rv = 0;
+-	while (1) {
+-		rv = usleep(CONFIG->BACKEND_REFRESH_TIME*1000000);
+-		if (rv == -1 && errno == EINTR)
+-			break;
+-		else if(get_backend_addrinfo()) {
+-			struct worker_update wu;
+-			wu.type = BACKEND_REFRESH;
+-			socklen_t len;
+-			const void *addr = VSA_Get_Sockaddr(backaddr, &len);
+-			memcpy(&(wu.payload.addr), addr, len);
+-			notify_workers(&wu);
+-		}
+-	}
+-}
+-
+ /* Process command line args, create the bound socket,
+  * spawn child (worker) processes, and respawn if any die */
+ int
+@@ -3770,10 +3646,9 @@
+ 				ev_loop(loop, EVRUN_ONCE);
+ 			}
+ 		} else
+-			sleep_and_refresh(CONFIG);
++			pause();
+ #else
+-
+-		sleep_and_refresh(CONFIG);
++		pause();
+ 		/* Sleep and let the children work.
+ 		 * Parent will be woken up if a signal arrives */
+ #endif /* USE_SHARED_CACHE */
+Only in ../hitch-1.4.7.original/src: hitch.c2
+diff -ur ../hitch-1.4.7.original/src/Makefile ./src/Makefile
+--- ../hitch-1.4.7.original/src/Makefile	2018-04-09 02:05:46.511731720 +0400
++++ ./src/Makefile	2018-04-09 02:17:56.639731054 +0400
+@@ -120,7 +120,7 @@
+ am__dirstamp = $(am__leading_dot)dirstamp
+ am_libforeign_a_OBJECTS = foreign/flopen.$(OBJEXT) \
+ 	foreign/vas.$(OBJEXT) foreign/vpf.$(OBJEXT) \
+-	foreign/vsb.$(OBJEXT) foreign/vsa.$(OBJEXT)
++	foreign/vsb.$(OBJEXT)
+ libforeign_a_OBJECTS = $(am_libforeign_a_OBJECTS)
+ am__installdirs = "$(DESTDIR)$(sbindir)"
+ PROGRAMS = $(sbin_PROGRAMS)
+@@ -565,8 +565,7 @@
+ 	foreign/vas.h \
+ 	foreign/vpf.h \
+ 	foreign/vqueue.h \
+-	foreign/vsb.h \
+-	foreign/vsa.h
++	foreign/vsb.h
+ 
+ BUILT_SOURCES = \
+ 	cfg_lex.c \
+@@ -586,8 +585,7 @@
+ 	foreign/flopen.c \
+ 	foreign/vas.c \
+ 	foreign/vpf.c \
+-	foreign/vsb.c \
+-	foreign/vsa.c
++	foreign/vsb.c
+ 
+ hitch_SOURCES = asn_gentm.c configuration.c hitch.c hssl_locks.c \
+ 	logging.c ocsp.c ringbuffer.c $(am__append_2)
+@@ -654,8 +652,6 @@
+ 	foreign/$(DEPDIR)/$(am__dirstamp)
+ foreign/vsb.$(OBJEXT): foreign/$(am__dirstamp) \
+ 	foreign/$(DEPDIR)/$(am__dirstamp)
+-foreign/vsa.$(OBJEXT): foreign/$(am__dirstamp) \
+-	foreign/$(DEPDIR)/$(am__dirstamp)
+ 
+ libforeign.a: $(libforeign_a_OBJECTS) $(libforeign_a_DEPENDENCIES) $(EXTRA_libforeign_a_DEPENDENCIES) 
+ 	$(AM_V_at)-rm -f libforeign.a
+@@ -728,7 +724,6 @@
+ include foreign/$(DEPDIR)/flopen.Po
+ include foreign/$(DEPDIR)/vas.Po
+ include foreign/$(DEPDIR)/vpf.Po
+-include foreign/$(DEPDIR)/vsa.Po
+ include foreign/$(DEPDIR)/vsb.Po
+ 
+ .c.o:
+diff -ur ../hitch-1.4.7.original/src/Makefile.am ./src/Makefile.am
+--- ../hitch-1.4.7.original/src/Makefile.am	2018-04-09 02:05:46.512731720 +0400
++++ ./src/Makefile.am	2018-04-09 02:17:56.639731054 +0400
+@@ -34,8 +34,7 @@
+ 	foreign/vas.h \
+ 	foreign/vpf.h \
+ 	foreign/vqueue.h \
+-	foreign/vsb.h \
+-	foreign/vsa.h
++	foreign/vsb.h
+ 
+ BUILT_SOURCES = \
+ 	cfg_lex.c \
+@@ -56,9 +55,7 @@
+ 	foreign/flopen.c \
+ 	foreign/vas.c \
+ 	foreign/vpf.c \
+-	foreign/vsb.c \
+-	foreign/vsa.c
+-
++	foreign/vsb.c
+ 
+ hitch_SOURCES = \
+ 	asn_gentm.c \
+diff -ur ../hitch-1.4.7.original/src/Makefile.in ./src/Makefile.in
+--- ../hitch-1.4.7.original/src/Makefile.in	2018-04-09 02:05:46.511731720 +0400
++++ ./src/Makefile.in	2018-04-09 02:17:56.638731054 +0400
+@@ -120,7 +120,7 @@
+ am__dirstamp = $(am__leading_dot)dirstamp
+ am_libforeign_a_OBJECTS = foreign/flopen.$(OBJEXT) \
+ 	foreign/vas.$(OBJEXT) foreign/vpf.$(OBJEXT) \
+-	foreign/vsb.$(OBJEXT) foreign/vsa.$(OBJEXT)
++	foreign/vsb.$(OBJEXT)
+ libforeign_a_OBJECTS = $(am_libforeign_a_OBJECTS)
+ am__installdirs = "$(DESTDIR)$(sbindir)"
+ PROGRAMS = $(sbin_PROGRAMS)
+@@ -565,8 +565,7 @@
+ 	foreign/vas.h \
+ 	foreign/vpf.h \
+ 	foreign/vqueue.h \
+-	foreign/vsb.h \
+-	foreign/vsa.h
++	foreign/vsb.h
+ 
+ BUILT_SOURCES = \
+ 	cfg_lex.c \
+@@ -586,8 +585,7 @@
+ 	foreign/flopen.c \
+ 	foreign/vas.c \
+ 	foreign/vpf.c \
+-	foreign/vsb.c \
+-	foreign/vsa.c
++	foreign/vsb.c
+ 
+ hitch_SOURCES = asn_gentm.c configuration.c hitch.c hssl_locks.c \
+ 	logging.c ocsp.c ringbuffer.c $(am__append_2)
+@@ -654,8 +652,6 @@
+ 	foreign/$(DEPDIR)/$(am__dirstamp)
+ foreign/vsb.$(OBJEXT): foreign/$(am__dirstamp) \
+ 	foreign/$(DEPDIR)/$(am__dirstamp)
+-foreign/vsa.$(OBJEXT): foreign/$(am__dirstamp) \
+-	foreign/$(DEPDIR)/$(am__dirstamp)
+ 
+ libforeign.a: $(libforeign_a_OBJECTS) $(libforeign_a_DEPENDENCIES) $(EXTRA_libforeign_a_DEPENDENCIES) 
+ 	$(AM_V_at)-rm -f libforeign.a
+@@ -728,7 +724,6 @@
+ @AMDEP_TRUE@@am__include@ @am__quote@foreign/$(DEPDIR)/flopen.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@foreign/$(DEPDIR)/vas.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@foreign/$(DEPDIR)/vpf.Po@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@foreign/$(DEPDIR)/vsa.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@foreign/$(DEPDIR)/vsb.Po@am__quote@
+ 
+ .c.o:
+Only in ../hitch-1.4.7.original/src/tests: test25-dynamic-backend-address.sh

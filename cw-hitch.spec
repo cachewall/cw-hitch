@@ -8,7 +8,7 @@
 
 %global name		cw-hitch
 %global version		1.4.7
-%global release		3%{?dist}.cachewall
+%global release		4%{?dist}.cachewall
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
@@ -35,6 +35,7 @@ Requires:		cw-openssl-devel
 Patch0:			hitch.systemd.service.patch
 Patch1:			hitch.initrc.redhat.patch
 Patch2:			hitch-issue-141.patch
+Patch3:			hitch-pull-256-revert-dynamic-backends.patch
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 Requires(post):		systemd
@@ -62,6 +63,7 @@ hitch is a network proxy that terminates TLS/SSL connections and forwards the un
 %patch0
 %patch1
 %patch2
+%patch3
 
 sed -i ' s/^group =.*/group = "nobody"/ ' hitch.conf.example
 
@@ -191,6 +193,12 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %doc %{_docdir}/hitch.conf.example
 
 %changelog
+* Sun Apr 08 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-4.cachewall
+- Patch for upstream pull request #256, reverts dynamic backend feature
+
+* Mon Mar 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-3.cachewall
+- cw-hitch now provides hitch and obsoletes hitch <= 1.4.6
+
 * Mon Mar 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-2.cachewall
 - Fixed %attr hitch user and group
 
