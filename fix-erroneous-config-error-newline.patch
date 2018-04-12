@@ -1,0 +1,14 @@
+diff -ur ../hitch-1.4.7.original/src/hitch.c ./src/hitch.c
+--- ../hitch-1.4.7.original/src/hitch.c	2018-04-13 03:31:20.916411948 +0400
++++ ./src/hitch.c	2018-04-13 03:31:47.253411924 +0400
+@@ -3651,7 +3651,9 @@
+ 
+ 	// parse command line
+ 	if (config_parse_cli(argc, argv, CONFIG, &rv) != 0) {
+-		fprintf(stderr, "%s\n", config_error_get());
++		if (strlen(config_error_get()) > 0) {
++			fprintf(stderr, "%s\n", config_error_get());
++		}
+ 		return (rv);
+ 	}
+ 
