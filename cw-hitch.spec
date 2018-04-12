@@ -8,7 +8,7 @@
 
 %global name		cw-hitch
 %global version		1.4.7
-%global release		4%{?dist}.cachewall
+%global release		5%{?dist}.cachewall
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
@@ -36,6 +36,8 @@ Patch0:			hitch.systemd.service.patch
 Patch1:			hitch.initrc.redhat.patch
 Patch2:			hitch-issue-141.patch
 Patch3:			hitch-pull-256-revert-dynamic-backends.patch
+Patch4:			fix-erroneous-config-error-newline.patch
+Patch5:			cachewall-version-suffix.patch
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 Requires(post):		systemd
@@ -64,6 +66,8 @@ hitch is a network proxy that terminates TLS/SSL connections and forwards the un
 %patch1
 %patch2
 %patch3
+%patch4
+%patch5
 
 sed -i ' s/^group =.*/group = "nobody"/ ' hitch.conf.example
 
