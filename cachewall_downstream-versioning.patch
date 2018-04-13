@@ -6,7 +6,7 @@ diff -ur ../hitch-1.4.7.original/config.h ./config.h
  
  /* Define to the full name and version of this package. */
 -#define PACKAGE_STRING "hitch 1.4.7"
-+#define PACKAGE_STRING "hitch 1.4.7-5.cachewall"
++#define PACKAGE_STRING "hitch 1.4.7-1_5.cachewall"
  
  /* Define to the one symbol short name of this package. */
  #define PACKAGE_TARNAME "hitch"
@@ -15,7 +15,7 @@ diff -ur ../hitch-1.4.7.original/config.h ./config.h
  
  /* Define to the version of this package. */
 -#define PACKAGE_VERSION "1.4.7"
-+#define PACKAGE_VERSION "1.4.7-5.cachewall"
++#define PACKAGE_VERSION "1.4.7-1_5.cachewall"
  
  /* Define if SO_REUSEPORT works */
  #define SO_REUSEPORT_WORKS 1
@@ -24,7 +24,7 @@ diff -ur ../hitch-1.4.7.original/config.h ./config.h
  
  /* Version number of package */
 -#define VERSION "1.4.7"
-+#define VERSION "1.4.7-5.cachewall"
++#define VERSION "1.4.7-1_5.cachewall"
  
  /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
     `char[]'. */

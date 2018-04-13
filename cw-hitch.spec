@@ -8,7 +8,7 @@
 
 %global name		cw-hitch
 %global version		1.4.7
-%global release		5%{?dist}.cachewall
+%global release		1_5%{?dist}.cachewall
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
