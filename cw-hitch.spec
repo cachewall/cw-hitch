@@ -32,12 +32,12 @@ BuildRequires:		pkgconfig
 BuildRequires:		libtool
 Requires:		cw-openssl
 Requires:		cw-openssl-devel
-Patch0:			hitch.systemd.service.patch
-Patch1:			hitch.initrc.redhat.patch
-Patch2:			hitch-issue-141.patch
-Patch3:			hitch-pull-256-revert-dynamic-backends.patch
-Patch4:			fix-erroneous-config-error-newline.patch
-Patch5:			cachewall-version-suffix.patch
+Patch0:			epel_hitch-systemd-service.patch
+Patch1:			epel_hitch-initrc-redhat.patch
+Patch2:			cachewall_hitch-issue141-fix-default-verify-paths.patch
+Patch3:			cachewall_hitch-pull256-revert-dynamic-backends.patch
+Patch4:			cachewall_fix-erroneous-config-error.patch
+Patch5:			cachewall_downstream-versioning.patch
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 Requires(post):		systemd
