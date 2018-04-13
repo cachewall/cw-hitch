@@ -197,6 +197,10 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %doc %{_docdir}/hitch.conf.example
 
 %changelog
+* Thu Apr 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-5.cachewall
+- Patch for appending release to program version string
+- Patch for erroneous configuration error output
+
 * Sun Apr 08 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-4.cachewall
 - Patch for upstream pull request #256, reverts dynamic backend feature
 
