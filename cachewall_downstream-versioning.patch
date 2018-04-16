@@ -7,8 +7,8 @@ diff -ru ../hitch-1.4.7.original/configure ./configure
  PACKAGE_TARNAME='hitch'
 -PACKAGE_VERSION='1.4.7'
 -PACKAGE_STRING='hitch 1.4.7'
-+PACKAGE_VERSION='1.4.7-1_6.cachewall'
-+PACKAGE_STRING='hitch 1.4.7-1_6.cachewall'
++PACKAGE_VERSION='1.4.7-1_7.cachewall'
++PACKAGE_STRING='hitch 1.4.7-1_7.cachewall'
  PACKAGE_BUGREPORT='opensource@varnish-software.com'
  PACKAGE_URL=''
  
@@ -17,7 +17,7 @@ diff -ru ../hitch-1.4.7.original/configure ./configure
  # Define the identity of the package.
   PACKAGE='hitch'
 - VERSION='1.4.7'
-+ VERSION='1.4.7-1_6.cachewall'
++ VERSION='1.4.7-1_7.cachewall'
  
  
  cat >>confdefs.h <<_ACEOF

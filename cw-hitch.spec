@@ -8,7 +8,7 @@
 
 %global name		cw-hitch
 %global version		1.4.7
-%global release		1_6%{?dist}.cachewall
+%global release		1_7%{?dist}.cachewall
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
@@ -197,6 +197,9 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %doc %{_docdir}/hitch.conf.example
 
 %changelog
+* Sun Apr 15 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1_7.cachewall
+- Fixed downstream versioning patch
+
 * Fri Apr 13 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1_6.cachewall
 - Release is now <upstream pkgrel>_<downstream pkgrel>
 
