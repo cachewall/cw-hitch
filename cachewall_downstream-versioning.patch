@@ -1,30 +1,23 @@
-diff -ur ../hitch-1.4.7.original/config.h ./config.h
---- ../hitch-1.4.7.original/config.h	2018-04-09 02:05:46.508731720 +0400
-+++ ./config.h	2018-04-13 03:29:18.191412060 +0400
-@@ -71,7 +71,7 @@
- #define PACKAGE_NAME "hitch"
+diff -ru ../hitch-1.4.7.original/configure ./configure
+--- ../hitch-1.4.7.original/configure	2018-04-09 02:05:46.513731720 +0400
++++ ./configure	2018-04-16 04:35:46.566172104 +0400
+@@ -580,8 +580,8 @@
+ # Identity of this package.
+ PACKAGE_NAME='hitch'
+ PACKAGE_TARNAME='hitch'
+-PACKAGE_VERSION='1.4.7'
+-PACKAGE_STRING='hitch 1.4.7'
++PACKAGE_VERSION='1.4.7-1_6.cachewall'
++PACKAGE_STRING='hitch 1.4.7-1_6.cachewall'
+ PACKAGE_BUGREPORT='opensource@varnish-software.com'
+ PACKAGE_URL=''
  
- /* Define to the full name and version of this package. */
--#define PACKAGE_STRING "hitch 1.4.7"
-+#define PACKAGE_STRING "hitch 1.4.7-1_6.cachewall"
+@@ -4358,7 +4358,7 @@
  
- /* Define to the one symbol short name of this package. */
- #define PACKAGE_TARNAME "hitch"
-@@ -80,7 +80,7 @@
- #define PACKAGE_URL ""
- 
- /* Define to the version of this package. */
--#define PACKAGE_VERSION "1.4.7"
-+#define PACKAGE_VERSION "1.4.7-1_6.cachewall"
- 
- /* Define if SO_REUSEPORT works */
- #define SO_REUSEPORT_WORKS 1
-@@ -111,7 +111,7 @@
+ # Define the identity of the package.
+  PACKAGE='hitch'
+- VERSION='1.4.7'
++ VERSION='1.4.7-1_6.cachewall'
  
  
- /* Version number of package */
--#define VERSION "1.4.7"
-+#define VERSION "1.4.7-1_6.cachewall"
- 
- /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
-    `char[]'. */
+ cat >>confdefs.h <<_ACEOF
