@@ -2,17 +2,14 @@
         %undefine dist
 %endif
 
-%if "%{dist}" == ".el7.centos"
-	%define dist	.el7
-%endif
-
+%define debug_package	%{nil}
 %global name		cw-hitch
 %global version		1.4.7
-%global release		1_7%{?dist}.cachewall
+%global release		1%{?dist}.cachewall
 %global _hitch_user	varnish
 %global _hitch_group	varnish
 %global _openssl_prefix /opt/cachewall/cw-openssl
-%global _docdir		%{_docdir}/hitch-%{version}
+%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Summary:		Network proxy that terminates TLS/SSL connections
 Name:			%{name}
@@ -21,10 +18,9 @@ Release:		%{release}
 Group:			System Environment/Daemons
 License:		BSD
 URL:			https://hitch-tls.org/
-Provides:		hitch
-Obsoletes:		hitch <= 1.4.6
+Provides:		%{name}
 BuildRoot:		%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Source0:		https://hitch-tls.org/source/hitch-%{version}.tar.gz
+Source0:		https://hitch-tls.org/source/%{name}-%{version}.tar.gz
 BuildRequires:		libev-devel
 BuildRequires:		cw-openssl
 BuildRequires:		cw-openssl-devel
@@ -32,12 +28,9 @@ BuildRequires:		pkgconfig
 BuildRequires:		libtool
 Requires:		cw-openssl
 Requires:		cw-openssl-devel
-Patch0:			epel_hitch-systemd-service.patch
-Patch1:			epel_hitch-initrc-redhat.patch
-Patch2:			cachewall_hitch-issue141-fix-default-verify-paths.patch
-Patch3:			cachewall_hitch-pull256-revert-dynamic-backends.patch
-Patch4:			cachewall_fix-erroneous-config-error.patch
-Patch5:			cachewall_downstream-versioning.patch
+Patch0:			hitch.systemd.service.patch
+Patch1:			hitch.initrc.redhat.patch
+Patch2:			hitch-issue-141.patch
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 Requires(post):		systemd
@@ -51,23 +44,11 @@ Requires(preun):	initscripts
 %description
 hitch is a network proxy that terminates TLS/SSL connections and forwards the unencrypted traffic to some backend. It is designed to handle 10s of thousands of connections efficiently on multicore machines.
 
-%package devel
-Summary:	Files for development of applications which will use Hitch
-Group:		Development/Libraries
-Requires:	krb5-devel%{?_isa}, zlib-devel%{?_isa}
-Requires:	pkgconfig
-
-%description devel
-hitch is a network proxy that terminates TLS/SSL connections and forwards the unencrypted traffic to some backend. It is designed to handle 10s of thousands of connections efficiently on multicore machines.
-
 %prep
-%setup -q -n hitch-%{version}
+%setup -q -n %{name}-%{version}
 %patch0
 %patch1
 %patch2
-%patch3
-%patch4
-%patch5
 
 sed -i ' s/^group =.*/group = "nobody"/ ' hitch.conf.example
 
@@ -90,7 +71,7 @@ export RST2MAN=/bin/true
 %endif
 
 %configure \
-	--docdir=%{_docdir}
+	--docdir=%{_pkgdocdir}
 
 %__make %{?_smp_mflags}
 
@@ -107,6 +88,8 @@ sed '
 %if 0%{?rhel} == 6
 	sed -i 's/daemon = off/daemon = on/g;' hitch.conf
 %endif
+
+%__rm -f %{buildroot}%{_pkgdocdir}/hitch.conf.example
 
 %if 0%{?fedora}
 	sed -i 's/^ciphers =.*/ciphers = "PROFILE=SYSTEM"/g' hitch.conf
@@ -165,16 +148,17 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %endif
 
 %files
-%doc %{_docdir}/README.md
-%doc %{_docdir}/CHANGES.rst
-%doc %{_docdir}/hitch.conf.example
+%doc README.md
+%doc CHANGES.rst
+%doc hitch.conf.example
+%doc docs/*
 
-%{_sbindir}/hitch
-%{_mandir}/man5/hitch.conf.5*
-%{_mandir}/man8/hitch.8*
-%dir %{_sysconfdir}/hitch
-%attr(0700,%_hitch_user,%_hitch_group) %dir %{_sharedstatedir}/hitch
-%config(noreplace) %{_sysconfdir}/hitch/hitch.conf
+%{_sbindir}/%{name}
+%{_mandir}/man5/%{name}.conf.5*
+%{_mandir}/man8/%{name}.8*
+%dir %{_sysconfdir}/%{name}
+%attr(0700,%hitch_user,%hitch_user) %dir %{_sharedstatedir}/hitch
+%config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
 
 %if 0%{?rhel} == 6
 %doc LICENSE
@@ -183,39 +167,15 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 %endif
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
-%{_unitdir}/hitch.service
-%ghost %verify(not md5 size mtime)  /run/hitch/hitch.pid
+%{_unitdir}/%{name}.service
+%ghost %verify(not md5 size mtime)  /run/%{name}/%{name}.pid
 %else
-%{_initrddir}/hitch
-%attr(0755,%_hitch_user,%_hitch_group) %dir %{_localstatedir}/run/hitch
-%attr(0644,%_hitch_user,%_hitch_group) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/hitch/hitch.pid
+%{_initrddir}/%{name}
+%attr(0755,%hitch_user,%hitch_user) %dir %{_localstatedir}/run/%{name}
+%attr(0644,%hitch_user,%hitch_user) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/%{name}/%{name}.pid
 %endif
 
-%files devel
-%doc %{_docdir}/README.md
-%doc %{_docdir}/CHANGES.rst
-%doc %{_docdir}/hitch.conf.example
-
 %changelog
-* Sun Apr 15 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1_7.cachewall
-- Fixed downstream versioning patch
-
-* Fri Apr 13 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1_6.cachewall
-- Release is now <upstream pkgrel>_<downstream pkgrel>
-
-* Thu Apr 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-5.cachewall
-- Patch for appending release to program version string
-- Patch for erroneous configuration error output
-
-* Sun Apr 08 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-4.cachewall
-- Patch for upstream pull request #256, reverts dynamic backend feature
-
-* Mon Mar 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-3.cachewall
-- cw-hitch now provides hitch and obsoletes hitch <= 1.4.6
-
-* Mon Mar 12 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-2.cachewall
-- Fixed %attr hitch user and group
-
 * Sun Mar 11 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1.cachewall
 - Updated to upstream release 1.4.7
 - Patch for upstream bug #141
@@ -332,4 +292,3 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 
 * Wed Jun 10 2015 Ingvar Hagelund <ingvar@redpill-linpro.com> 1.0.0-0.3.beta3
 - Initial wrap for fedora
-
