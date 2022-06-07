@@ -1,184 +1,263 @@
-%if 0%{?_no_dist}
-        %undefine dist
-%endif
+# Checks may only be ran from a host with internet connection
+%global runcheck	0
 
-%define debug_package	%{nil}
-%global name		cw-hitch
-%global version		1.4.7
-%global release		1%{?dist}.cachewall
-%global _hitch_user	varnish
-%global _hitch_group	varnish
-%global _openssl_prefix /opt/cachewall/cw-openssl
+%global hitch_user	varnish
+%global hitch_group	varnish
+%global hitch_homedir	%{_sharedstatedir}/hitch
+%global hitch_confdir	%{_sysconfdir}/hitch
+%global hitch_datadir	%{_datadir}/hitch
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
-Summary:		Network proxy that terminates TLS/SSL connections
-Name:			%{name}
-Version:		%{version}
-Release:		%{release}
-Group:			System Environment/Daemons
-License:		BSD
-URL:			https://hitch-tls.org/
-Provides:		%{name}
-BuildRoot:		%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Source0:		https://hitch-tls.org/source/%{name}-%{version}.tar.gz
-BuildRequires:		libev-devel
-BuildRequires:		cw-openssl
-BuildRequires:		cw-openssl-devel
-BuildRequires:		pkgconfig
-BuildRequires:		libtool
-Requires:		cw-openssl
-Requires:		cw-openssl-devel
-Patch0:			hitch.systemd.service.patch
-Patch1:			hitch.initrc.redhat.patch
-Patch2:			hitch-issue-141.patch
+# A bug in the rhel7 builders? Looks like they set _pkgdocdir fedora style
+# without version...?
+%if 0%{?rhel} == 6 || 0%{?rhel} == 7
+%global _pkgdocdir %{_docdir}/%{name}-%{version}
+%endif
+
+%global _hardened_build 1
+
+Name:		hitch
+Version:	1.7.2
+Release:	2%{?dist}
+Summary:	Network proxy that terminates TLS/SSL connections
+
+License:	BSD
+URL:		https://hitch-tls.org/
+Source0:	https://hitch-tls.org/source/hitch-%{version}.tar.gz
+
+BuildRequires:	make
+BuildRequires:	libev-devel
+BuildRequires:	openssl-devel
+BuildRequires:	openssl
+BuildRequires:	pkgconfig
+BuildRequires:	libtool
+#BuildRequires:	python-docutils >= 0.6
+Requires:	openssl
+
+Patch0:		hitch.systemd.service.patch
+Patch1:		hitch.initrc.redhat.patch
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
-Requires(post):		systemd
-Requires(preun):	systemd
-Requires(postun):	systemd
-BuildRequires:		systemd
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+BuildRequires: systemd
 %else
-Requires(preun):	initscripts
+Requires(preun): initscripts
 %endif
 
 %description
-hitch is a network proxy that terminates TLS/SSL connections and forwards the unencrypted traffic to some backend. It is designed to handle 10s of thousands of connections efficiently on multicore machines.
+hitch is a network proxy that terminates TLS/SSL connections and forwards the
+unencrypted traffic to some backend. It is designed to handle 10s of thousands
+of connections efficiently on multicore machines.
 
 %prep
-%setup -q -n %{name}-%{version}
+%setup -q -n hitch-%{version}
 %patch0
 %patch1
-%patch2
-
-sed -i ' s/^group =.*/group = "nobody"/ ' hitch.conf.example
 
 %build
-export RST2MAN=/bin/true
-
-%if 0%{?_openssl_prefix:1}
-	export SSL_CFLAGS="-I%{_openssl_prefix}/include -L%{_openssl_prefix}/lib"
-	export SSL_LIBS="-lssl"
-	export CRYPTO_CFLAGS="-I%{_openssl_prefix}/include -L%{_openssl_prefix}/lib"
-	export CRYPTO_LIBS="-lcrypto"
-	export C_INCLUDE_PATH="%{_openssl_prefix}/include"
-	export LIBRARY_PATH="%{_openssl_prefix}/lib"
-%endif
+#./bootstrap
 
 %if 0%{?rhel} == 6
-	export CFLAGS="%{optflags} -fPIE"
-	export LDFLAGS="-pie"
-	export CPPFLAGS="-I%{_includedir}/libev"
+CFLAGS="%{optflags} -fPIE"
+LDFLAGS=" -pie"
+CPPFLAGS=" -I%{_includedir}/libev"
+export LDFLAGS
+export CPPFLAGS
 %endif
+export CFLAGS
 
-%configure \
-	--docdir=%{_pkgdocdir}
+# manpages are prebuilt, no need to build again
+export RST2MAN=/bin/true
 
-%__make %{?_smp_mflags}
+%configure --docdir=%_pkgdocdir
+
+make %{?_smp_mflags}
 
 
 %install
 %make_install
-
-sed '
-	s/user = .*/user = "%{_hitch_user}"/g;
-	s/group = .*/group = "%{_hitch_group}"/g;
+sed   '
+	s/user = .*/user = "%{hitch_user}"/g;
+	s/group = .*/group = "%{hitch_group}"/g;
 	s/backend = "\[127.0.0.1\]:8000"/backend = "[127.0.0.1]:6081"/g;
+	$a\syslog = on
+	$a\log-level = 1
+	$a\# Add pem files to this directory
+	$a\pem-dir = "/etc/pki/tls/private"
 	' hitch.conf.example > hitch.conf
 
-%if 0%{?rhel} == 6
-	sed -i 's/daemon = off/daemon = on/g;' hitch.conf
-%endif
-
-%__rm -f %{buildroot}%{_pkgdocdir}/hitch.conf.example
-
-%if 0%{?fedora}
+%if 0%{?fedora} 
 	sed -i 's/^ciphers =.*/ciphers = "PROFILE=SYSTEM"/g' hitch.conf
 %endif
 
-%__install -p -D -m 0644 hitch.conf %{buildroot}%{_sysconfdir}/hitch/hitch.conf
-%__install -d -m 0755 %{buildroot}%{_sharedstatedir}/hitch
-%__install -d -m 0755 %{buildroot}%{_sharedstatedir}/hitch
+rm -f %{buildroot}%{_datarootdir}/doc/%{name}/hitch.conf.example
 
+install -p -D -m 0644 hitch.conf %{buildroot}%{_sysconfdir}/hitch/hitch.conf
+install -d -m 0755 %{buildroot}%{hitch_homedir}
+install -d -m 0755 %{buildroot}%{hitch_datadir}
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
-	%__install -p -D -m 0644 hitch.service %{buildroot}%{_unitdir}/hitch.service
+install -p -D -m 0644 hitch.service %{buildroot}%{_unitdir}/hitch.service
+install -p -D -m 0644 limit.conf    %{buildroot}%{_sysconfdir}/systemd/system/%{name}.service.d/limit.conf
+
 %else
-	%__install -p -D -m 0755 hitch.initrc.redhat %{buildroot}%{_initrddir}/hitch
-	%__install -d -m 0755 %{buildroot}%{_localstatedir}/run/hitch
+install -p -D -m 0755 hitch.initrc.redhat %{buildroot}%{_initrddir}/hitch
+install -d -m 0755 %{buildroot}%{_localstatedir}/run/hitch
 %endif
 
+# check is not enabled by default, as it won't work on the koji builders, 
+# nor on machines that can't reach the Internet. 
+%check
+%if 0%{?runcheck} == 1
+make check
+%endif
 
 %pre
 groupadd -r %{hitch_group} &>/dev/null ||:
-useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitch_user} &>/dev/null ||:
-
-%if 0%{?rhel} == 6
-	# Save init.d/hitch if Cachewall.
-	[ -f "%{_initrddir}/hitch" ] \
-		&& grep -qsi cachewall "%{_initrddir}/hitch" \
-		&& %__cp -f %{_initrddir}/hitch %{_initrddir}/.hitch.cachewall ||:
-%endif
+useradd -r -g %{hitch_group} -s /sbin/nologin -d %{hitch_homedir} %{hitch_user} &>/dev/null ||:
 
 
 %post
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
-	%systemd_post hitch.service
+%systemd_post hitch.service
 %else
-	[ -f "%{_initrddir}/.hitch.cachewall" ] \
-		&& %__cp -f "%{_initrddir}/.hitch.cachewall" "%{_initrddir}/hitch" ||:
-
-	/sbin/chkconfig --add hitch
+/sbin/chkconfig --add hitch
 %endif
-
 
 %preun
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
-	%systemd_preun hitch.service
+%systemd_preun hitch.service
 %else
-	if [ "$1" -eq 0 ]
-	then
-		/sbin/service hitch status \
-			&& /sbin/service hitch stop &>/dev/null ||:
-		/sbin/chkconfig --del hitch ||:
-	fi
+if [ $1 -lt 1 ]; then
+/sbin/service hitch stop > /dev/null 2>&1
+/sbin/chkconfig --del hitch
+fi
 %endif
+
 
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 %postun
 %systemd_postun_with_restart hitch.service
 %endif
 
+
 %files
 %doc README.md
 %doc CHANGES.rst
 %doc hitch.conf.example
 %doc docs/*
-
-%{_sbindir}/%{name}
-%{_mandir}/man5/%{name}.conf.5*
-%{_mandir}/man8/%{name}.8*
-%dir %{_sysconfdir}/%{name}
-%attr(0700,%hitch_user,%hitch_user) %dir %{_sharedstatedir}/hitch
-%config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
-
 %if 0%{?rhel} == 6
 %doc LICENSE
 %else
 %license LICENSE
 %endif
-
+%{_sbindir}/%{name}
+%{_mandir}/man5/%{name}.conf.5*
+%{_mandir}/man8/%{name}.8*
+%dir %{_sysconfdir}/%{name}
+%attr(0700,%hitch_user,%hitch_user) %dir %hitch_homedir
+%config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 %{_unitdir}/%{name}.service
+%config(noreplace) %{_sysconfdir}/systemd/system/%{name}.service.d/limit.conf
 %ghost %verify(not md5 size mtime)  /run/%{name}/%{name}.pid
+
 %else
 %{_initrddir}/%{name}
 %attr(0755,%hitch_user,%hitch_user) %dir %{_localstatedir}/run/%{name}
-%attr(0644,%hitch_user,%hitch_user) %ghost %verify(not md5 size mtime)  %{_localstatedir}/run/%{name}/%{name}.pid
+%attr(0644,%hitch_user,%hitch_user) %ghost %verify(not md5 size mtime)	%{_localstatedir}/run/%{name}/%{name}.pid
 %endif
 
+
 %changelog
-* Sun Mar 11 2018 Bryon Elston <bryon@cachewall.com> - 1.4.7-1.cachewall
-- Updated to upstream release 1.4.7
-- Patch for upstream bug #141
+* Thu Jan 20 2022 Fedora Release Engineering <releng@fedoraproject.org> - 1.7.2-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_36_Mass_Rebuild
+
+* Mon Nov 29 2021 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.7.2-1
+- New upstream release
+
+* Tue Sep 14 2021 Sahana Prasad <sahana@redhat.com> - 1.7.0-5
+- Rebuilt with OpenSSL 3.0.0
+
+* Thu Jul 22 2021 Fedora Release Engineering <releng@fedoraproject.org> - 1.7.0-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_35_Mass_Rebuild
+
+* Tue Mar 02 2021 Zbigniew Jędrzejewski-Szmek <zbyszek@in.waw.pl> - 1.7.0-3
+- Rebuilt for updated systemd-rpm-macros
+  See https://pagure.io/fesco/issue/2583.
+
+* Tue Jan 26 2021 Fedora Release Engineering <releng@fedoraproject.org> - 1.7.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_34_Mass_Rebuild
+
+* Tue Oct 27 2020 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.7.0-1
+- New upstream release
+
+* Fri Oct 16 2020 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.6.1-2
+- Built from recently released official upstream tarball
+- Removed extra buildreqs and stuff
+
+* Tue Oct 13 2020 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.6.1-1
+- New upstream release.
+- Built from git tag, as no upstream tarball exists since August. Pinged
+  upstream about it.
+- Extra buildreqs and stuff
+
+* Tue Jul 28 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1.6.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
+
+* Thu Jun 25 2020 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.6.0-1
+- New upstream release
+- Removed patches merged upstream
+
+* Mon Feb 10 2020 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.5.2-3
+- Added upstream patch for gcc-10.0.1, upstream issue 326
+
+* Wed Jan 29 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1.5.2-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_32_Mass_Rebuild
+
+* Wed Nov 27 2019 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.5.2-1
+- New upstream release
+- Removed patches merged upstream
+
+* Tue Nov 26 2019 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.5.1-1
+- New upstream release
+- Added a patch working around upstream bug #322
+- Example config now sets debug-level=1 and logs to syslog
+
+* Tue Nov 12 2019 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.5.0-4
+- Added support for epel8
+- Added a systemd limit.conf with defaults LimitCORE=infinity, LimitNOFILE=10240
+- Added pem-dir = "/etc/pki/tls/private" to the example config
+- Changed systemd Type=forking matching the example config, fixes bz #1731420
+- Simplified handling of the _docdir macro
+
+* Thu Jul 25 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1.5.0-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_31_Mass_Rebuild
+
+* Fri Feb 01 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1.5.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
+* Tue Jan 22 2019 Ingvar Hagelund <ingvar@redpill-linpro.com> 1.5.0-1
+- New upstream release
+
+* Fri Jul 13 2018 Fedora Release Engineering <releng@fedoraproject.org> - 1.4.8-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
+
+* Thu Apr 19 2018 Ingvar Hagelund <ingvar@redpill-linpro.com>  - 1.4.8-1
+- New upstream release 1.4.8, closes bz 1569501
+
+* Wed Feb 07 2018 Fedora Release Engineering <releng@fedoraproject.org> - 1.4.6-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
+
+* Mon Sep 04 2017 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.4.6-4
+- Rebuilt against openssl-1.0.2k for epel7
+
+* Wed Aug 02 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.4.6-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Binutils_Mass_Rebuild
+
+* Wed Jul 26 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.4.6-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
 
 * Wed Jun 07 2017 Ingvar Hagelund <ingvar@redpill-linpro.com> - 1.4.6-1
 - New upstream release
@@ -231,7 +310,7 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 * Mon Apr 25 2016 Ingvar Hagelund <ingvar@redpill-linpro.com> 1.2.0-1
 - New upstream release
 - Clean up test tree before build
-- Removed no longer needed test patch
+- Removed no longer needed test patch 
 - Rebased missing_curl_resolve_on_el6 test patch
 - Added reload option to systemd service file and sysv initrc script
 - Changed the default cipher to "PROFILE=SYSTEM" on fedora
@@ -292,3 +371,4 @@ useradd -r -g %{hitch_group} -s /sbin/nologin -d %{_sharedstatedir}/hitch %{hitc
 
 * Wed Jun 10 2015 Ingvar Hagelund <ingvar@redpill-linpro.com> 1.0.0-0.3.beta3
 - Initial wrap for fedora
+
